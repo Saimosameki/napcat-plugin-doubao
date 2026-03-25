@@ -27,7 +27,7 @@ import type {
 } from 'napcat-types/napcat-onebot/network/plugin/types';
 import { EventType } from 'napcat-types/napcat-onebot/event/index';
 
-import { buildConfigSchema } from './config';
+import { buildConfigSchema } from './config.js';
 import { pluginState } from './core/state';
 import { handleMessage } from './handlers/message-handler';
 import { registerApiRoutes } from './services/api-service';
