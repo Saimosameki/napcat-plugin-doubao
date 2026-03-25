@@ -13,7 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { NapCatPluginContext, PluginLogger } from 'napcat-types/napcat-onebot/network/plugin/types';
-import { DEFAULT_CONFIG } from '../config';
+import { DEFAULT_CONFIG } from '../config.js';
 import type { PluginConfig, GroupConfig } from '../types';
 
 // ==================== 配置清洗工具 ====================
