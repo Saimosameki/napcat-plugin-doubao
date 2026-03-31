@@ -6,13 +6,10 @@
   "main": "index.mjs",
   "description": "豆包AI聊天插件，支持智能对话,各种对话",
   "author": "Sameki",
-  "scripts": {
-    "build": "vite build"
-  },
   "napcat": {
-    "tags": ["工具", "娱乐"], 
+    "tags": ["工具", "娱乐", "AI"], 
     "minVersion": "4.14.0",
-    "homepage": "https://github.com/Saimosameki/napcat-plugin-doubao" 
+    "homepage": "https://github.com/Saimosameki/napcat-plugin-doubao"
   },
   "dependencies": {
     "docx": "^9.6.1",
@@ -22,10 +19,6 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/node": "^22.0.1",
-    "@rollup/plugin-node-resolve": "^15.3.1",
-    "napcat-plugin-debug-cli": "^1.2.6",
-    "typescript": "^5.3.3",
-    "vite": "^6.4.1"
+    "@types/node": "^22.0.1"
   }
 }

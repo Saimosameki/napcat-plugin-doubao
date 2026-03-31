@@ -53,10 +53,14 @@ let currentConfig = {
   enableQueryExpansion: true,
   enableSemanticSearch: true,
   imageGenQuality: "standard",
-  imageGenSize: "2K",
+  imageGenSize: "4K",
   imageGenTimeout: 60000,
   autoReplyGroupVideo: false,
-  allowedUsers: []  // QQ号白名单，空数组表示允许所有人
+  allowedUsers: [],  // QQ号白名单，空数组表示允许所有人
+  // 表情包配置
+  enableMeme: false,           // 是否启用表情包功能
+  memeDir: "memes",            // 表情包根目录（相对于插件目录，或绝对路径）
+  memeChance: 0.4              // 每次回复触发表情包的概率（0~1）
 };
 
 export function getConfig() {

@@ -257,6 +257,52 @@ export function isSimpleImageToImageTrigger(prompt) {
   return simplePatterns.some(pattern => pattern.test(cleanPrompt));
 }
 
+// 检测纯文字消息是否为局部修改/图生图指令（用于配合待处理参考图缓存）
+export function isInpaintingInstruction(messageContent) {
+  if (!Array.isArray(messageContent)) return false;
+
+  const hasImage = messageContent.some(item => item.type === "image_url");
+  if (hasImage) return false; // 有图片的走正常图生图流程
+
+  const textContent = messageContent
+    .filter(item => item.type === "text")
+    .map(item => item.text)
+    .join(" ")
+    .trim();
+
+  if (!textContent || textContent.length < 2) return false;
+
+  const lower = textContent.toLowerCase();
+
+  // 局部修改/图生图相关关键词
+  const keywords = [
+    '改成', '改为', '变成', '修改成', '转换成', '风格转换',
+    '重新画', '重新生成', '再画一张', '换个风格', '换成',
+    '把图', '将图', '图片改', '图中改',
+    '人物改', '角色改', '姿势改', '动作改', '表情改',
+    '背景改', '场景改', '服装改', '发型改', '颜色改',
+    '局部修改', '局部编辑', '局部替换',
+    '生成类似', '生成相似', '生成一样', '生成同款',
+    '画类似', '画相似', '画一张类似',
+    '参考这张', '基于这张', '根据这张', '按照这张',
+    '动漫风格', '写实风格', '水彩风格', '油画风格', '赛博朋克',
+    '卡通风格', '素描风格', '像素风格', '二次元风格',
+  ];
+
+  if (keywords.some(kw => lower.includes(kw))) return true;
+
+  // 句式模式
+  const patterns = [
+    /(把|将).*(改成|改为|变成|换成)/,
+    /(改成|改为|变成|转换成).*(风格|样子|姿势|动作|颜色|背景)/,
+    /(生成|画|做|创作|制作).*(类似|相似|一样|同款)/,
+    /(局部|部分).*(修改|编辑|替换|改变)/,
+    /(换|改).*(背景|发型|服装|表情|姿势|动作)/,
+  ];
+
+  return patterns.some(p => p.test(lower));
+}
+
 // 检测是否为图生图请求（消息中包含图片+生成请求）
 export function isImageToImageRequest(messageContent) {
   if (!Array.isArray(messageContent)) {

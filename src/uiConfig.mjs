@@ -71,6 +71,17 @@ export function createPluginConfigUI(ctx) {
     ctx.NapCatConfig.text("maxDocumentSize", "文档内容大小限制", "1048576", "单个文档内容的最大字符数（字节）"),
     ctx.NapCatConfig.text("maxDocumentFileSize", "文档文件大小限制", "10485760", "文档文件的最大大小（字节，默认10MB）"),
     
+    ctx.NapCatConfig.html('<div style="padding: 10px; background: rgba(255,105,180,0.1); border-radius: 8px; margin-top: 10px;"><h4>😄 表情包配置</h4></div>'),
+    ctx.NapCatConfig.boolean("enableMeme", "启用表情包", false, "回复时根据内容情绪自动附带一张表情包图片"),
+    ctx.NapCatConfig.text("memeDir", "表情包目录", "memes", "表情包根目录路径（相对于插件目录或绝对路径）。子目录名对应情绪：happy/angry/sad/surprised/shy/thinking/default"),
+    ctx.NapCatConfig.select("memeChance", "触发概率", [
+      { label: "20% - 偶尔发送", value: "0.2" },
+      { label: "40% - 适中（推荐）", value: "0.4" },
+      { label: "60% - 较频繁", value: "0.6" },
+      { label: "80% - 很频繁", value: "0.8" },
+      { label: "100% - 每次都发", value: "1.0" }
+    ], "0.4", "每次文字回复后触发表情包的概率"),
+
     ctx.NapCatConfig.html('<div style="padding: 10px; background: rgba(220,53,69,0.1); border-radius: 8px; margin-top: 10px;"><h4>🔒 访问控制</h4></div>'),
     ctx.NapCatConfig.text("allowedUsers", "允许的QQ号", "", "允许使用AI的QQ号列表，多个用英文逗号分隔，留空表示允许所有人。例如：123456789,987654321"),
     

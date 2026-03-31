@@ -5,12 +5,104 @@ import { needsWebSearch } from '../utils.mjs';
 import { callResponsesAPI } from './responsesApi.mjs';
 import { callBotsAPI } from './botsApi.mjs';
 import { callChatAPI } from './chatApi.mjs';
-import { generateImage, isImageGenerationRequest, extractImagePrompt, extractImageCount, isImageToImageRequest, extractReferenceImages, generateImageFromImage, isSimpleImageToImageTrigger, isImageStitchingRequest, generateStitchingPrompt } from './imageGenApi.mjs';
+import { generateImage, isImageGenerationRequest, extractImagePrompt, extractImageCount, isImageToImageRequest, extractReferenceImages, generateImageFromImage, isSimpleImageToImageTrigger, isImageStitchingRequest, generateStitchingPrompt, isInpaintingInstruction } from './imageGenApi.mjs';
 import { isDocumentGenerationRequest, detectDocumentType, generateExcelDocument, generateWordDocument } from '../documentGenerator.mjs';
 
-export async function callDoubaoAPI(messageContent, contextId, logger, userMessageId = null) {
+// 待处理参考图缓存：key=contextId, value={ images, timestamp }
+const pendingReferenceImages = new Map();
+const PENDING_IMAGE_TTL = 5 * 60 * 1000; // 5分钟有效期
+
+function setPendingImages(contextId, images) {
+  pendingReferenceImages.set(contextId, { images, timestamp: Date.now() });
+}
+
+function getPendingImages(contextId) {
+  const entry = pendingReferenceImages.get(contextId);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > PENDING_IMAGE_TTL) {
+    pendingReferenceImages.delete(contextId);
+    return null;
+  }
+  return entry.images;
+}
+
+function clearPendingImages(contextId) {
+  pendingReferenceImages.delete(contextId);
+}
+
+export async function callDoubaoAPI(messageContent, contextId, logger, userMessageId = null, userKey = null) {
   try {
     const config = getConfig();
+    // 局部修改缓存始终按用户维度隔离，避免群聊共享上下文时互相干扰
+    const inpaintKey = userKey || contextId;
+
+    // === 局部修改缓存逻辑 ===
+    // 触发条件：图片 + 文字"局部修改"关键词 → 暂存图片，等待下一条修改指令
+    // 其余情况（纯图片、图片+其他文字）不受影响，走正常识别/图生图流程
+    if (config.enableImageGeneration) {
+      const imagesInMsg = Array.isArray(messageContent)
+        ? messageContent.filter(item => item.type === "image_url")
+        : [];
+      const textsInMsg = Array.isArray(messageContent)
+        ? messageContent.filter(item => item.type === "text")
+        : [];
+      const textContent = textsInMsg.map(t => t.text).join(' ').trim();
+      const hasInpaintingTrigger = /局部修改/.test(textContent);
+
+      // 情况1：图片 + "局部修改" → 暂存图片，提示发修改指令
+      if (imagesInMsg.length > 0 && hasInpaintingTrigger) {
+        const imageUrls = imagesInMsg.map(item => item.image_url.url);
+        setPendingImages(inpaintKey, imageUrls);
+        logger?.info(`局部修改模式：暂存 ${imageUrls.length} 张参考图`);
+        return `🖼️ 已收到参考图片（${imageUrls.length}张），进入局部修改模式！\n\n请发送具体的修改指令，例如：\n• 把背景改成星空\n• 改成动漫风格\n• 把人物服装换成红色\n• 把头发改成金色\n\n💡 参考图将在5分钟内有效。`;
+      }
+
+      // 情况2：无图片 + 有缓存图 → 直接执行局部修改（用户已进入局部修改模式，任何文字都是修改指令）
+      if (imagesInMsg.length === 0) {
+        const cachedImages = getPendingImages(inpaintKey);
+        if (cachedImages && cachedImages.length > 0) {
+          logger?.info(`执行局部修改，使用缓存的 ${cachedImages.length} 张参考图`);
+          clearPendingImages(inpaintKey);
+
+          const prompt = textContent;
+          const imageCount = extractImageCount(messageContent);
+          const result = await generateImageFromImage(prompt, cachedImages, logger, imageCount);
+
+          if (result.success) {
+            if (result.images) {
+              return {
+                type: 'image_generation',
+                images: result.images,
+                totalCount: result.totalCount,
+                successCount: result.successCount,
+                failCount: result.failCount,
+                errors: result.errors,
+                prompt: result.prompt,
+                originalPrompt: result.originalPrompt,
+                model: result.model,
+                isImageToImage: true,
+                referenceCount: cachedImages.length
+              };
+            } else {
+              return {
+                type: 'image_generation',
+                imagePath: result.imagePath,
+                fileName: result.fileName,
+                prompt: result.prompt,
+                originalPrompt: result.originalPrompt,
+                model: result.model,
+                size: result.size,
+                isImageToImage: true,
+                referenceCount: cachedImages.length
+              };
+            }
+          } else {
+            return `❌ ${result.message}`;
+          }
+        }
+      }
+    }
+    // === 局部修改缓存逻辑结束 ===
     
     // 首先检查是否为图片拼接请求（多张图片+拼接指令）
     if (config.enableImageGeneration && isImageStitchingRequest(messageContent)) {

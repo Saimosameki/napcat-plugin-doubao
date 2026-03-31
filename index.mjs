@@ -6,6 +6,7 @@ import { sendMessage } from './src/utils.mjs';
 import { parseMultimediaMessage } from './src/messageParser.mjs';
 import { callDoubaoAPI } from './src/api/index.mjs';
 import { createPluginConfigUI } from './src/uiConfig.mjs';
+import { selectMeme } from './src/meme.mjs';
 
 let logger = null;
 let plugin_config_ui = [];
@@ -208,7 +209,7 @@ const plugin_onmessage = async (ctx, event) => {
       logger?.info("检测到多媒体内容");
     }
     
-    const aiResponse = await callDoubaoAPI(messageContent, contextId, logger, event.message_id);
+    const aiResponse = await callDoubaoAPI(messageContent, contextId, logger, event.message_id, `user_${event.user_id}`);
     
     if (aiResponse) {
       // 检查是否是图片生成结果
@@ -360,6 +361,13 @@ const plugin_onmessage = async (ctx, event) => {
         // 普通文本回复
         await sendMessage(ctx.actions, event, aiResponse, ctx.adapterName, ctx.pluginManager.config);
         logger?.info("AI回复已发送");
+
+        // 表情包：根据回复内容选择并发送
+        const memePath = selectMeme(aiResponse, logger);
+        if (memePath) {
+          await sendMessage(ctx.actions, event, `[CQ:image,file=file://${memePath}]`, ctx.adapterName, ctx.pluginManager.config);
+          logger?.info(`表情包已发送: ${memePath}`);
+        }
       }
     } else {
       await sendMessage(ctx.actions, event, "❌ AI服务暂时不可用，请稍后再试。", ctx.adapterName, ctx.pluginManager.config);
